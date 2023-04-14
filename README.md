@@ -1,6 +1,6 @@
-# Helpshift Dev Docs
+# Nikshift Dev Docs
 
-Welcome to the repository for the Helpshift Developer Documentation!
+Welcome to the repository for the Nikshift Developer Documentation!
 
 ## Found a problem?
 
