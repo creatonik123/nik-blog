@@ -1,0 +1,206 @@
+---
+sidebar_position: 85
+title: Outbound Support
+description: "With outbound support, you can proactively engage with consumers to solve problems within the app. Read more about the feature **[here](https://support.helpshift.com/hc/faq/1163-outbound-support-create-outbound-support-link)**."
+---
+
+import {
+  Admonition,
+  CodeBlock,
+  Tabs,
+  TabItem,
+  LatestSdkVersion,
+  Centered,
+  Image,
+  Intro,
+  SideBySide,
+  DownloadButton,
+  Steps,
+  Step,
+} from "@site/src/components/forDocs";
+
+# Outbound Support {#outbound-support}
+
+<Intro>
+
+With outbound support, you can proactively engage with consumers to solve problems within the app. Read more about the feature **[here](https://support.helpshift.com/hc/faq/1163-outbound-support-create-outbound-support-link)**.
+
+</Intro>
+
+<Admonition type="info" title="Note">
+
+All the public APIs in the SDK should be called after initializing the SDK via [Helpshift.install() API](/sdkx_ios/getting-started#start-using)
+
+</Admonition>
+
+The steps to use this feature are the following -
+
+To generate the link for outbound support, on your Helpshift dashboard, go to **Settings** > **Workflows** > **Outbound Support**.
+
+![](/static/books/helpshiftx/outbound-support.png)
+
+You should see a **New link** button. Click on the New link button and select an action like **Chat, Help Center, Single FAQ or FAQ Section** and other data like **CIFs, Tags, First User Message** you want to send as payload to Helpshift SDK.
+
+<Image src="/static/books/helpshiftx/generate-link-box.png" width="full" />{" "}
+
+At last, you will get a URL encoded payload link. Send this link to your end-users embedded in a notification payload using your existing Push notification system.
+
+YOUR_APP_IDENTIFIER: Can be any unique string that identifies your app. For example, like the scheme you would use in deep link URLs for your app like myApp , myAppSupport, etc.
+
+<Image src="/static/books/helpshiftx/proactive-link.png" width="full" />{" "}
+
+## Delegate push notification data to Helpshift SDK {#delegate-notification-data}
+
+To pass the outbound support data to Helpshift, follow these steps -
+
+1. Send push notification to the users you want to give proactive support using your app's push notification system
+
+2. In your app, handle this notification such that when a user opens the app through notification, you pass the notification data to Helpshift SDK by calling `handleProactiveLink:(NSString *) proactiveLink` function in `application:didReceiveRemoteNotification:` OR `application:didReceiveRemoteNotification:fetchCompletionHandler:`
+
+3. We will read the data from the link you provided and open Helpshift support with the configurations you provided from outbound support dashboard.
+
+<Tabs groupId="ios-languages">
+
+<TabItem value="Objective-C" label="Objective-C">
+
+```objc
+[Helpshift handleProactiveLink:proactiveLink];
+```
+
+</TabItem>
+<TabItem value="Swift" label="Swift">
+
+```swift
+Helpshift.handleProactiveLink(proactiveLink)
+```
+
+</TabItem>
+
+</Tabs>
+
+<Admonition type="danger" title="Important">
+
+- You need to manage notifications for both Outbound Support and Helpshift notifications. As an example, on receiving Helpshift chat message notification, you can call `[Helpshift handleNotificationWithUserInfoDictionary:]` followed by `completionHandler(UNNotificationPresentationOptionNone);`. On receiving Outbound Support notification, you can do `completionHandler(UNNotificationPresentationOptionAlert);`.
+
+- This is just an example for reference. Actual implementation will depend on your app’s notification handling code.
+
+</Admonition>
+
+For example, following code shows how to handle incoming push notification and post it on the notification bar of the device -
+
+<Tabs groupId="ios-languages">
+
+<TabItem value="Objective-C" label="Objective-C">
+
+```objc
+- (void) userNotificationCenter:(UNUserNotificationCenter *)center
+    willPresentNotification:(UNNotification *)notification
+    withCompletionHandler:(void (^)(UNNotificationPresentationOptions))completionHandler {
+    if([[notification.request.content.userInfo objectForKey:@"origin"] isEqualToString:@"helpshift"]) {
+        // This is a notification from Helpshift push notification system
+        [Helpshift handleNotificationWithUserInfoDictionary:notification.request.content.userInfo isAppLaunch:NO withController:self.window.rootViewController];
+        completionHandler(UNNotificationPresentationOptionNone);
+    } else {
+        NSString* proactiveLink = [[notification.request.content.userInfo objectForKey:@"aps"] objectForKey:@"helpshift_proactive_link"];
+        if (proactiveLink != nil) {
+            // This is notification for handling Helpshift proactive link
+            [Helpshift handleProactiveLink:proactiveLink];
+            completionHandler(UNNotificationPresentationOptionNone);
+        } else  {
+            // This is not a notification from Helpshift system
+            // This is your existing push notification system
+            // Manage other normal notification here
+            completionHandler(UNNotificationPresentationOptionAlert);
+        }
+    }
+}
+```
+
+</TabItem>
+<TabItem value="Swift" label="Swift">
+
+```swift
+func userNotificationCenter(_ center: UNUserNotificationCenter,
+    willPresent notification: UNNotification,
+    withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+    if notification.request.content.userInfo["origin"] as? String == "helpshift" {
+        // This is a notification from Helpshift push notification system
+        Helpshift.handleNotification(withUserInfoDictionary: userInfo, isAppLaunch: false, with: rootViewController)
+        completionHandler([])
+    } else if let proactiveLink = notification.request.content.userInfo["aps"]["helpshift_proactive_link"] as? String {
+        // This is notification for handling Helpshift proactive link
+        Helpshift.handleProactiveLink(proactiveLink)
+        completionHandler([])
+    } else {
+        // This is not a notification from Helpshift system
+        // This is your existing push notification system
+        // Manage other normal notification here
+        completionHandler(.alert)
+    }
+}
+```
+
+</TabItem>
+
+</Tabs>
+
+## Passing configuration specific to the current user {#user-specific-config}
+
+You may want to add configuration specific to the current user in your app when they click on the notification.
+
+Setting local API config enables the Helpshift SDK to merge configuration from both, the config embedded in the outbound support link (as mentioned in previous steps) and the local config provided at runtime. This local API config is exactly same as we would expect in other APIs like `showConversation:` or `showFAQs:`.
+
+We will use this configuration for current issue as well as next issue filed in same session.
+
+<Admonition type="info" title="Note">
+
+You need to call this API after [Helpshift Installation API](/sdkx_ios/getting-started#start-using) and before Helpshift.handleProactiveLink()
+
+</Admonition>
+
+Implement public interface `HelpshiftProactiveAPIConfigCollectorDelegate` in your AppDelegate class and call `setProactiveAPIConfigCollectorDelegate:` method to initialise the config collector delegate after call of install Helpshift SDK
+
+You will have to implement the method `getAPIConfig` where you can add any user specific config in the same format as you add in other public APIs like `showConversation:` or `showFAQs:`.
+
+We will merge this config and the config embedded in the outbound support link. We will append data of config from outbound support link to local config like **Tags, CIFs**, etc. In case of conflicts, outbound support config will get the precedence.
+
+For example, following code shows how to implement `HelpshiftProactiveAPIConfigCollectorDelegate` and how to add user specific configurations using `getAPIConfig` method -
+
+<Tabs groupId="ios-languages">
+
+<TabItem value="Objective-C" label="Objective-C">
+
+```objc
+// Set proactiveConfig collector delegate
+[Helpshift.sharedInstance setProactiveAPIConfigCollectorDelegate:self];
+
+// Delegate callback
+- (nonnull NSDictionary *) getAPIConfig {
+    NSDictionary *config = @{ @"tags":tagsArray,
+                              @"customIssueFields": cifDictionary };
+    ..
+    return localConfig;
+}
+```
+
+</TabItem>
+<TabItem value="Swift" label="Swift">
+
+```swift
+// Set proactiveConfig collector delegate
+Helpshift.sharedInstance.setProactiveAPIConfigCollectorDelegate(self)
+
+// Delegate callback
+func getAPIConfig() -> Dictionary<String, Any> {
+    var config: [String: Any] = [
+        "tags": tagsArray,
+        "customIssueFields": cifDictionary
+    ]
+    ...
+    return config
+}
+```
+
+</TabItem>
+
+</Tabs>
