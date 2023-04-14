@@ -38,6 +38,10 @@
                     {
                         "label": "Feedback+ SDK",
                         "to": "/freesdk"
+                    },
+                    {
+                        "label": "Uni Blog",
+                        "to": "/uni-blog"
                     }
                 ]
             },
@@ -53,6 +57,10 @@
                     {
                         "label": "Email support",
                         "to": "/email-support"
+                    },
+                    {
+                        "label": "Uni Blog",
+                        "to": "/uni-blog"
                     }
                 ]
             },
